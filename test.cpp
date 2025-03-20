@@ -1,23 +1,21 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <tlhelp32.h>
 #include <tchar.h>
 #include <fstream>
 #include <iostream>
 
 int wmain() {
-    // 1. Tạo process notepad.exe
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
-    // Chuỗi cần là kiểu wchar_t*
     wchar_t cmdLine[] = L"notepad.exe";
 
     if (!CreateProcessW(
         NULL,
-        cmdLine,       // Kiểu LPWSTR
+        cmdLine,
         NULL,
         NULL,
         FALSE,
@@ -33,7 +31,6 @@ int wmain() {
 
     std::wcout << L"Notepad launched. PID: " << pi.dwProcessId << std::endl;
 
-    // 2. Ghi log các tiến trình đang chạy
     std::wofstream logFile(L"process_log.txt");
     if (!logFile.is_open()) {
         std::wcerr << L"Could not open log file.\n";
@@ -53,8 +50,7 @@ int wmain() {
         do {
             logFile << L"PID: " << pe.th32ProcessID << L" | Executable: " << pe.szExeFile << L"\n";
         } while (Process32NextW(hSnapshot, &pe));
-    }
-    else {
+    } else {
         std::wcerr << L"Process32First failed.\n";
     }
 
@@ -62,7 +58,6 @@ int wmain() {
     logFile.close();
     std::wcout << L"Process list saved to process_log.txt.\n";
 
-    // Đóng handle của notepad process
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
 
