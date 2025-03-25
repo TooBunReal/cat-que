@@ -3,6 +3,7 @@
 #include <tchar.h>
 #include <fstream>
 #include <iostream>
+#include <map>
 
 void CreateNotepadProcess() {
     STARTUPINFOW si;
@@ -52,35 +53,38 @@ void EnumerateProcessesAndThreads() {
         return;
     }
 
+    HANDLE hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (hThreadSnap == INVALID_HANDLE_VALUE) {
+        std::cerr << "Failed to take thread snapshot. Error: " << GetLastError() << std::endl;
+        CloseHandle(hSnapshot);
+        return;
+    }
+
+    std::map<DWORD, int> threadCountMap;
+    THREADENTRY32 te;
+    te.dwSize = sizeof(THREADENTRY32);
+    if (Thread32First(hThreadSnap, &te)) {
+        do {
+            threadCountMap[te.th32OwnerProcessID]++;
+        } while (Thread32Next(hThreadSnap, &te));
+    }
+    CloseHandle(hThreadSnap);
+
+
     PROCESSENTRY32 pe;
     pe.dwSize = sizeof(PROCESSENTRY32);
-
     std::cout << "Process Name\t\tPID\tThread Count" << std::endl;
     std::cout << "-----------------------------------------------" << std::endl;
 
     if (Process32First(hSnapshot, &pe)) {
         do {
-            int threadCount = 0;
-            HANDLE hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-            if (hThreadSnap != INVALID_HANDLE_VALUE) {
-                THREADENTRY32 te;
-                te.dwSize = sizeof(THREADENTRY32);
-                if (Thread32First(hThreadSnap, &te)) {
-                    do {
-                        if (te.th32OwnerProcessID == pe.th32ProcessID) {
-                            threadCount++;
-                        }
-                    } while (Thread32Next(hThreadSnap, &te));
-                }
-                CloseHandle(hThreadSnap);
-            }
+            int threadCount = threadCountMap[pe.th32ProcessID];
             std::wcout << pe.szExeFile << "\t" << pe.th32ProcessID << "\t" << threadCount << std::endl;
         } while (Process32Next(hSnapshot, &pe));
     }
 
     CloseHandle(hSnapshot);
 }
-
 int wmain() {
     CreateNotepadProcess();
     EnumerateProcessesAndThreads();
